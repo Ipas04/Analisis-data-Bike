@@ -1,1 +1,1 @@
-https://analysis-data-bike-jr2akmenktdcehvaufbzbf.streamlit.app/
+https://analysis-data-bike.streamlit.app/
