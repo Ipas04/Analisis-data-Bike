@@ -1,13 +1,6 @@
 matplotlib==3.10.0
-matplotlib-inline==0.1.7
-matplotlib-venn==1.1.2
-notebook==6.5.5
-notebook_shim==0.2.4
 numpy==1.26.4
 pandas==2.2.2
-pandas-datareader==0.10.0
-pandas-gbq==0.28.0
-pandas-stubs==2.2.2.240909
-pandocfilters==1.5.1
+plotly==5.24.1
 seaborn==0.13.2
-streamlit==1.43.0
+streamlit==1.43.1
