@@ -6,12 +6,12 @@ pip install -r requirements.txt
 
 === Setup Environment - Shell/Terminal ===
 
-mkdir dashboard_Bike
-cd dashboard_Bike
+mkdir dashboard
+cd dashboard
 pipenv install
 pipenv shell
 pip install -r requirements.txt
 
 === Run steamlit app ===
-streamlit run dash_bike.py
+streamlit run dashboard.py
 

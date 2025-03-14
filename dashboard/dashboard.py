@@ -1,72 +1,79 @@
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import streamlit as st
-from babel.numbers import format_currency
-
-sns.set(style='dark')
 
 day_df = pd.read_csv('main_data.csv')
-day_df['dteday'] = pd.to_datetime(day_df['dteday'])
 
+sns.set_theme(style="whitegrid")
 
-months = [
-    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-]
+st.title("Analisis Penyewaan Sepeda Kasual Berdasarkan Musim, Hari Libur, dan Hari Kerja")
 
-day_df['yr'] = day_df['yr'].replace({0: 2011, 1: 2012})
+st.write("Dashboard ini memudahkan pengguna untuk memilih musim dan melihat jumlah penyewaan sepeda kasual berdasarkan hari kerja dan akhir pekan.")
+
+season_labels = ['Spring', 'Summer', 'Fall', 'Winter']
 
 with st.sidebar:
-    st.header("Silahkan pilih kategori")
-    selected_year = st.number_input("Pilih Tahun", min_value=2011, max_value=2012, value=2011)
-    start_month = st.selectbox("Pilih Bulan Mulai", months)
-    end_month = st.selectbox("Pilih Bulan Akhir", months)
+    st.header("Pilih Musim")
+    selected_season = st.selectbox("Musim", season_labels, index=0)
 
-month_to_number = {month: index + 1 for index, month in enumerate(months)}
-start_month_number = month_to_number[start_month]
-end_month_number = month_to_number[end_month]
+# Mendapatkan nomor musim berdasarkan pilihan
+season_number = season_labels.index(selected_season) + 1
 
-data_filtered = day_df[
-    (day_df['yr'] == selected_year) & 
-    (day_df['mnth'] >= start_month_number) & 
-    (day_df['mnth'] <= end_month_number)
-]
+# Filter data berdasarkan musim yang dipilih
+data_filtered = day_df[day_df['season'] == season_number]
 
-st.header(f"Data Penyewaan dari Bulan {start_month} sampai {end_month} Tahun {selected_year}")
+# permusim
+seasonal_casual_rentals = data_filtered.groupby('season')['casual'].sum()
 
-if data_filtered.empty:
-    st.write("Maaf, data tidak ada untuk rentang bulan dan tahun ini.")
+# seluruh musim
+seasonal = day_df.groupby('season')['casual'].sum()
+
+# Membuat grafik batang untuk jumlah penyewaan kasual per musim
+fig, ax = plt.subplots()
+season_names = ['Spring', 'Summer', 'Fall', 'Winter']
+casual_rentals_bars = ax.bar(season_names, [seasonal.get(season_number, 0) for season_number in range(1, 5)], color=['lightblue', 'lightgreen', 'orange', 'grey'])
+ax.set_ylabel('Total Penyewaan Kasual')
+ax.set_title('Total Penyewaan Kasual per Musim')
+ax.set_facecolor('#f5f5f5')
+
+for bar in casual_rentals_bars:
+    yval = bar.get_height()
+    ax.text(bar.get_x() + bar.get_width()/2, yval, round(yval, 2), va='bottom')
+st.pyplot(fig)
+
+
+if not data_filtered.empty:
+    working_day_data = data_filtered[data_filtered['workingday'] == 1]['casual'].sum()
+    weekend_data = data_filtered[data_filtered['workingday'] == 0]['casual'].sum()
+
+    # Membuat grafik batang untuk hari kerja vs akhir pekan (penyewaan)
+    fig, ax = plt.subplots()
+    bars = ax.bar(['Hari Kerja', 'Akhir Pekan'], [working_day_data, weekend_data], color=['tomato', 'deepskyblue'])
+    for bar in bars:
+        yval = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2, yval, round(yval, 2), va='bottom') 
+    ax.set_ylabel('Jumlah Penyewaan Kasual')
+    ax.set_title(f'Penyewaan Kasual pada {selected_season} (Hari Kerja vs Akhir Pekan)')
+    ax.set_facecolor('#f5f5f5')  
+    st.pyplot(fig)
+
+    # Kelompokkan data berdasarkan weather_isit dan hitung jumlah penyewaan kasual
+    weather_casual_rentals = data_filtered.groupby('weathersit')['casual'].sum()
+
+    # Membuat grafik batang untuk jumlah penyewaan kasual berdasarkan weatherst pada musim yang dipilih
+    fig, ax = plt.subplots()
+    weather_labels = ['Clear', 'Mist', 'Light Rain', 'Heavy Rain']
+    weather_bars = ax.bar(weather_labels, [weather_casual_rentals.get(i, 0) for i in range(1, 5)], color=['skyblue', 'lightgray', 'lightblue', 'dimgrey'])
+    ax.set_ylabel('Total Penyewaan Kasual')
+    ax.set_title(f'Total Penyewaan Kasual Season {selected_season}')
+    ax.set_facecolor('#f5f5f5')
+
+    for bar in weather_bars:
+        yval = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2, yval, round(yval, 2), va='bottom')
+    st.pyplot(fig)
+
 else:
-    monthly_rentals = data_filtered.groupby(['mnth', 'yr']).agg({
-        'cnt': 'sum', 
-        'casual': 'sum', 
-        'registered': 'sum'}).reset_index()
-
-    month_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    monthly_rentals['mnth'] = monthly_rentals['mnth'].apply(lambda x: month_labels[x - 1])
-
-    max_value = monthly_rentals['cnt'].max()
-    colors = ['red' if cnt == max_value else 'skyblue' for cnt in monthly_rentals['cnt']]
-
-    # Membuat grafik jumlah penyewaan
-    plt.figure(figsize=(10, 5))
-    sns.barplot(x='mnth', y='cnt', data=monthly_rentals, palette=colors)
-
-    plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{x:,.0f}'))
-    plt.xlabel("Bulan")
-    plt.ylabel("Jumlah Penyewaan")
-    plt.title(f"Jumlah Penyewaan Sepeda dari Bulan {start_month} sampai {end_month} Tahun {selected_year}")
-    st.pyplot(plt)
-
-    plt.figure(figsize=(10, 5))
-    monthly_rentals.set_index('mnth')[['casual', 'registered']].plot(kind='bar', color=['skyblue', 'orange'])
-
-    plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{x:,.0f}'))
-    plt.xlabel("Bulan")
-    plt.ylabel("Jumlah Penyewaan")
-    plt.title(f"Perbandingan Penyewaan Sepeda Casual dan Registered dari Bulan {start_month} sampai {end_month} Tahun {selected_year}")
-    plt.xticks(rotation=45)
-    st.pyplot(plt)
-
-st.caption("Dashboard Penyewaan Sepeda | Siapang 2025")
+    st.error("Tidak ada data untuk musim yang dipilih.")
